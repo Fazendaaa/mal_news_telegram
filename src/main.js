@@ -36,13 +36,12 @@ const job = schedule.scheduleJob('00,30 * * * *', () => {
     client.get('statuses/user_timeline', mal_params, (error, tweets, response) => {
         if (error) console.log(error);
 
-        else {
+        else if (0 !== tweets.length) {
             tweets.forEach(tweet => {
                 telegram.sendMessage(process.env.CHANNEL_ID, tweet.text);
             });
 
-            if(0 !== tweets.length)
-                lastest_id = tweets[0].id;
+            lastest_id = tweets[0].id;
         }
     });
 });

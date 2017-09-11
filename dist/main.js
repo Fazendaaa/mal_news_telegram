@@ -49,12 +49,12 @@ const job = _nodeSchedule2.default.scheduleJob('00,30 * * * *', () => {
 
     console.log(`[${serverTime.toString()}] Running content notifications.`);
     client.get('statuses/user_timeline', mal_params, (error, tweets, response) => {
-        if (error) console.log(error);else {
+        if (error) console.log(error);else if (0 !== tweets.length) {
             tweets.forEach(tweet => {
                 telegram.sendMessage(process.env.CHANNEL_ID, tweet.text);
             });
 
-            if (0 !== tweets.length) lastest_id = tweets[0].id;
+            lastest_id = tweets[0].id;
         }
     });
 });
