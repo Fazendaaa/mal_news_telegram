@@ -31,16 +31,18 @@ const job = schedule.scheduleJob('00,30 * * * *', () => {
         include_rts: false,
         since_id: lastest_id
     };
-    
+
     console.log(`[${serverTime.toString()}] Running content notifications.`);
     client.get('statuses/user_timeline', mal_params, (error, tweets, response) => {
         if (error) console.log(error);
 
         else {
             tweets.forEach(tweet => {
-                telegram.sendMessage(process.env.CHANNEL_ID, tweet.text)
+                telegram.sendMessage(process.env.CHANNEL_ID, tweet.text);
             });
-            lastest_id = tweets[tweets.length-1].id;
+
+            if(0 !== tweets.length)
+                lastest_id = tweets[0].id;
         }
     });
 });
