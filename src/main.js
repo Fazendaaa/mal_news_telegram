@@ -2,6 +2,7 @@ import Twitter from 'twitter';
 import dotenv from 'dotenv';
 import Telegraf from 'telegraf';
 import schedule from 'node-schedule';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -16,32 +17,47 @@ const client = new Twitter({
     access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
     access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
 });
-let lastest_id = undefined;
 
 bot.use(Telegraf.log());
 bot.use(Telegraf.memorySession());
 bot.startPolling();
 
-// Runs each half hour.
-const job = schedule.scheduleJob('00,30 * * * *', () => {
-    const serverTime = new Date(Date.now());
-    const mal_params = {
-        screen_name: 'myanimelist',
-        exclude_replies: true,
-        include_rts: false,
-        since_id: lastest_id
-    };
+const updateMal = mal => {
+    const updated = JSON.stringify(mal, null, '\t');
 
-    console.log(`[${serverTime.toString()}] Running content notifications.`);
-    client.get('statuses/user_timeline', mal_params, (error, tweets, response) => {
-        if (error) console.log(error);
+    fs.writeFile('./mal.json', updated, (err, data) => {
+        if(err)
+            console.log(err);
+    });
+}
 
-        else if (0 !== tweets.length) {
-            tweets.forEach(tweet => {
-                telegram.sendMessage(process.env.CHANNEL_ID, tweet.text);
-            });
+new Promise((resolve, reject) => {
+    fs.readFile('./mal.json', (err, data) => {
+        if (err)
+            console.log(err)
+        else
+            resolve(JSON.parse(data));
+    })
+}).then(data => {
+    let mal_params = data;
+    // Runs each half hour.
+    const job = schedule.scheduleJob('00,30 * * * *', () => {
+        const serverTime = new Date(Date.now());
 
-            lastest_id = tweets[0].id;
-        }
+        console.log(`[${serverTime.toString()}] Running content notifications.`);
+        client.get('statuses/user_timeline', mal_params, (error, tweets, response) => {
+            if (error)
+                console.log(error);
+    
+            else if (0 !== tweets.length) {
+                tweets.forEach(tweet => {
+                    telegram.sendMessage(process.env.CHANNEL_ID, tweet.text);
+                });
+    
+                // Save the lastest id so, that way, when the bot crashes and need it to reboot it wont fetch all the way though the data when starts up again
+                mal_params.since_id = tweets[0].id;
+                updateMal(mal_params);
+            }
+        });
     });
 });
